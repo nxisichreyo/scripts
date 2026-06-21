@@ -1,0 +1,62 @@
+-- Wait until the game fully loads the player
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local pGui = localPlayer:WaitForChild("PlayerGui", 10)
+
+if not pGui then
+    warn("Could not find PlayerGui!")
+    return
+end
+
+print("--- Auto-Clasher Initialized ---")
+
+-- Function to press the key
+local function pressKey(key)
+    local keyCode = Enum.KeyCode[key:upper()]
+    if keyCode then
+        print("Pressing: " .. key:upper())
+        
+        -- Method 1: VirtualInputManager (Fastest)
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+            task.wait(0.03)
+            VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+        end)
+        
+        -- Method 2: Fallback for executors that don't support VIM fully
+        -- (Uses standard keypress simulation if available in your executor)
+        if keypress then
+            pcall(function()
+                keypress(keyCode)
+                task.wait(0.03)
+                keyrelease(keyCode)
+            end)
+        end
+    end
+end
+
+-- Automatic Target Finder
+-- This looks through your UI for any TextLabel that changes to W, A, S, or D
+local function setupListener(obj)
+    if obj:IsA("TextLabel") or obj:IsA("TextBox") then
+        obj:GetPropertyChangedSignal("Text"):Connect(function()
+            local text = string.lower(string.gsub(obj.Text, "%s+", "")) -- clean up spaces
+            if text == "w" or text == "a" or text == "s" or text == "d" then
+                pressKey(text)
+            end
+        end)
+    end
+end
+
+-- Scan existing UI elements
+for _, child in ipairs(pGui:GetDescendants()) do
+    setupListener(child)
+end
+
+-- Watch for new UI elements that might clone in during the clash
+pGui.DescendantAdded:Connect(setupListener)
+
+print("Scanning UI for WASD prompts... Start the clash!")
